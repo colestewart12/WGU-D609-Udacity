@@ -13,23 +13,23 @@ spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
 
-# Read step trainer landing from Glue catalog
-step_trainer_landing = glueContext.create_dynamic_frame.from_catalog(
-    database="stedi",
-    table_name="step_trainer_landing"
+step_trainer_landing = glueContext.create_dynamic_frame.from_options(
+    connection_type="s3",
+    connection_options={
+        "paths": ["s3://cole-stewart-d609-udacity/step_trainer/landing/"],
+        "recurse": True
+    },
+    format="json"
 )
 
-# Read customers curated from Glue catalog
 customers_curated = glueContext.create_dynamic_frame.from_catalog(
     database="stedi",
     table_name="customers_curated"
 )
 
-# Register as temp views
 step_trainer_landing.toDF().createOrReplaceTempView("step_trainer_landing")
 customers_curated.toDF().createOrReplaceTempView("customers_curated")
 
-# Inner join on serial number, keep only step trainer columns
 step_trainer_trusted_df = spark.sql("""
     SELECT DISTINCT
         s.sensorreadingtime,
@@ -40,12 +40,10 @@ step_trainer_trusted_df = spark.sql("""
         ON s.serialnumber = c.serialnumber
 """)
 
-# Convert to DynamicFrame
 step_trainer_trusted_dynamic = DynamicFrame.fromDF(
     step_trainer_trusted_df, glueContext, "step_trainer_trusted"
 )
 
-# Write to S3 and create/update Glue catalog table
 sink = glueContext.getSink(
     connection_type="s3",
     path="s3://cole-stewart-d609-udacity/step_trainer/trusted/",

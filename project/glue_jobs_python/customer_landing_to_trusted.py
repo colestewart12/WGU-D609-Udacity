@@ -13,9 +13,14 @@ spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
 
-customer_landing = glueContext.create_dynamic_frame.from_catalog(
-    database="stedi",
-    table_name="customer_landing"
+customer_landing = glueContext.create_dynamic_frame.from_options(
+    connection_type="s3",
+    connection_options={
+        "paths": ["s3://cole-stewart-d609-udacity/customer/landing/"],
+        "recurse": True
+    },
+    format="json",
+    format_options={"jsonPath": "$[*]"}
 )
 
 customer_landing.toDF().createOrReplaceTempView("customer_landing")
